@@ -1,0 +1,92 @@
+datasource db { provider = "postgresql"; url = env("DATABASE_URL") }
+generator client { provider = "prisma-client-js" }
+
+enum Role { OWNER ADMIN STAFF VIEWER }
+enum Industry { CONSULTING MEDICAL LAW OTHER }
+enum HstCode { HST_ON EXEMPT ZERO_RATED }
+enum OnboardingStatus { NOT_STARTED IN_PROGRESS COMPLETE }
+
+model User {
+  id        String  @id @default(cuid())
+  email     String  @unique
+  name      String?
+  role      Role    @default(STAFF)
+  firms     FirmUser[]
+  createdAt DateTime @default(now())
+}
+
+model Firm {
+  id        String   @id @default(cuid())
+  name      String
+  users     FirmUser[]
+  clients   Client[]
+  sops      SopLink[]
+  createdAt DateTime @default(now())
+}
+
+model FirmUser {
+  id      String @id @default(cuid())
+  userId  String
+  firmId  String
+  role    Role   @default(STAFF)
+  user    User   @relation(fields: [userId], references: [id])
+  firm    Firm   @relation(fields: [firmId], references: [id])
+  @@unique([userId, firmId])
+}
+
+model Client {
+  id                String            @id @default(cuid())
+  firmId            String
+  name              String
+  industry          Industry
+  qboaUrl           String?
+  sopFolderUrl      String?
+  vendorMapUrl      String?
+  taxReportUrl      String?
+  status            OnboardingStatus  @default(NOT_STARTED)
+  lastUpdateDate    DateTime?
+  createdAt         DateTime          @default(now())
+  firm              Firm              @relation(fields: [firmId], references: [id])
+  coaAccounts       CoaAccount[]
+  vendors           VendorMapping[]
+  customers         CustomerMapping[]
+}
+
+model CoaAccount {
+  id          String   @id @default(cuid())
+  clientId    String
+  name        String
+  type        String
+  detailType  String
+  gifiCode    String
+  description String?
+  defaultHst  HstCode?
+  sopUrl      String?
+  client      Client   @relation(fields: [clientId], references: [id])
+}
+
+model VendorMapping {
+  id          String   @id @default(cuid())
+  clientId    String
+  displayName String
+  defaultHst  HstCode
+  notes       String?
+  client      Client   @relation(fields: [clientId], references: [id])
+}
+
+model CustomerMapping {
+  id          String   @id @default(cuid())
+  clientId    String
+  displayName String
+  defaultHst  HstCode
+  notes       String?
+  client      Client   @relation(fields: [clientId], references: [id])
+}
+
+model SopLink {
+  id       String  @id @default(cuid())
+  firmId   String
+  title    String
+  url      String
+  firm     Firm    @relation(fields: [firmId], references: [id])
+}
